@@ -4,7 +4,7 @@ import { comments } from './1704286745049_comments';
 
 export const posts = pgTable('posts', {
 	id: serial('id').primaryKey(),
-	name: varchar('name', { length: 256 }),
+	name: varchar('name', { length: 256 }).notNull(),
 	image: varchar('image', { length: 256 }),
 	description: text('description'),
 	is_active: boolean('is_active').default(true),

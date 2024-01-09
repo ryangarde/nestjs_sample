@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS "roles" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "posts" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"name" varchar(256),
+	"name" varchar(256) NOT NULL,
 	"image" varchar(256),
 	"description" text,
 	"is_active" boolean DEFAULT true,
@@ -22,12 +22,12 @@ CREATE TABLE IF NOT EXISTS "posts" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "users" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"first_name" varchar(256),
-	"last_name" varchar(256),
+	"first_name" varchar(256) NOT NULL,
+	"last_name" varchar(256) NOT NULL,
 	"middle_name" varchar(256),
 	"suffix" varchar(256),
-	"email" varchar(256),
-	"username" varchar(256),
+	"email" varchar(256) NOT NULL,
+	"username" varchar(256) NOT NULL,
 	"password" varchar(256),
 	"role_id" bigint,
 	"created_by" varchar(256),
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS "users" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "comments" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"description" text,
+	"description" text NOT NULL,
 	"post_id" serial NOT NULL,
 	"is_active" boolean DEFAULT true,
 	"created_by" varchar(256),

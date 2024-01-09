@@ -1,5 +1,5 @@
-import { ExecutionContext, applyDecorators, createParamDecorator } from '@nestjs/common';
-import { ApiBody, ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
+import { applyDecorators } from '@nestjs/common';
+import { ApiBody, ApiResponse } from '@nestjs/swagger';
 import { TableConfig } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 
@@ -11,6 +11,7 @@ type SwaggerApiProps = {
 export const SwaggerApi = ({ schema, action }: SwaggerApiProps) => {
 	const properties = {};
 	const actionProperties = {};
+	const required = [];
 
 	function getCondition(key: string) {
 		let condition = true;
@@ -41,6 +42,10 @@ export const SwaggerApi = ({ schema, action }: SwaggerApiProps) => {
 		}
 
 		if (!['$inferInsert', '$inferSelect', '_', 'getSQL'].includes(key)) {
+			if (schema[key].notNull) {
+				required.push(schema[key].name);
+			}
+
 			properties[schema[key].name] = {
 				type: (() => {
 					if (schema[key].dataType === 'date') {
@@ -53,16 +58,31 @@ export const SwaggerApi = ({ schema, action }: SwaggerApiProps) => {
 		}
 	});
 
+	function customDecorator() {
+		return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+			const originalValue = descriptor.value;
+
+			descriptor.value = function (...args: any[]) {
+				// "this" here will refer to the class instance
+				console.log(this.constructor.name, 'asdad');
+
+				return originalValue.apply(this, args);
+			};
+		};
+	}
+
 	return applyDecorators(
+		customDecorator,
 		ApiBody({
 			schema: {
 				type: 'object',
 				properties: actionProperties,
 			},
 		}),
-		(action === 'create' ? ApiCreatedResponse : ApiOkResponse)({
+		ApiResponse({
 			schema: {
 				type: 'object',
+				required,
 				properties: {
 					response: {
 						type: 'object',
@@ -82,6 +102,7 @@ export const SwaggerApi = ({ schema, action }: SwaggerApiProps) => {
 					},
 				},
 			},
+			status: action === 'create' ? 201 : 200,
 		})
 	);
 };
