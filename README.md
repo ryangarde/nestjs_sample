@@ -15,11 +15,16 @@ If you want to populate the db with some data, you can run `npm run seed:create`
 Summary:
 
 1. `npm run migrate:create -- --name <table-name>`
-   2: `npm run migrate:generate`
-2. `npm run migrate`
-   Proceed to step 4 if you want to populate the db with data
-3. `npm run seed:create`
-4. `npm run seed`
+
+2: `npm run migrate:generate`
+
+3. `npm run migrate`
+
+Proceed to step 4 if you want to populate the db with data
+
+4. `npm run seed:create`
+
+5. `npm run seed`
 
 When you made a mistake by generating a wrong migration file, do not delete the migration file inside drizzle. Instead, run `npm run migrate:drop` then in the terminal it will let you choose the migration file to drop.
 
