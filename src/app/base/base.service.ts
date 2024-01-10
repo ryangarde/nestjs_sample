@@ -9,7 +9,7 @@ import { Request } from 'express';
 
 type IndexProps = {
 	query?: any;
-	dbName?: keyof typeof db.query;
+	dbName: keyof typeof db.query;
 };
 
 type CreateProps = {
@@ -20,7 +20,7 @@ type CreateProps = {
 	// file?: Express.Multer.File;
 	// files?: Express.Multer.File[];
 	req: Request;
-	schema?: PgTable<TableConfig>;
+	schema: PgTable<TableConfig>;
 };
 
 type DBType = typeof db;
@@ -42,23 +42,23 @@ export type PaginatedData<I = any> = {
 };
 
 @Injectable()
-export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> {
-	dbName: keyof typeof db.query = null;
-	dbSchema: T = null;
+export class BaseService {
+	// dbName: keyof typeof db.query = null;
+	// dbSchema: T = null;
 
-	constructor(
-		model?: keyof typeof db.query | T
-		//  dbList?: PgTable<TableConfig>
-	) {
-		if (typeof model === 'string') {
-			this.dbName = model;
-		} else {
-			this.dbSchema = model;
-		}
-	}
+	// constructor(
+	// 	model?: keyof typeof db.query | T
+	// 	//  dbList?: PgTable<TableConfig>
+	// ) {
+	// 	if (typeof model === 'string') {
+	// 		this.dbName = model;
+	// 	} else {
+	// 		this.dbSchema = model;
+	// 	}
+	// }
 
 	async index<I = any>({ query, dbName }: IndexProps): Promise<I[] | PaginatedData<I>> {
-		let model = db.query[dbName || (this.dbName as any)];
+		let model = db.query[dbName as any];
 		// db.query.posts.findMany({
 		// 	where: (items, { isNotNull }) => isNotNull(items.deleted_datetime),
 		// })
@@ -69,7 +69,7 @@ export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> 
 		const include = query.include ? `[${query.include.join(',')}]` : null;
 
 		if (page) {
-			const count = +(await db.execute(sql.raw(`SELECT COUNT(*) as count FROM ${this.dbName}`)))[0].count;
+			const count = +(await db.execute(sql.raw(`SELECT COUNT(*) as count FROM ${dbName}`)))[0].count;
 			const pagination = {
 				total_data: count,
 				page_limit: limit || 10,
@@ -148,18 +148,21 @@ export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> 
 			payload[file.fieldname] = getFileUrl(req, file);
 		}
 
-		item = (
-			await db
-				.insert(schema || this.dbSchema)
-				.values(payload)
-				.returning()
-		)?.[0];
+		item = (await db.insert(schema).values(payload).returning())?.[0];
 
 		return item;
 	}
 
-	async show<K extends keyof DBQueryType = keyof DBQueryType>(id: number, options?: FindFirstType<K>) {
-		let model = db.query[this.dbName as any];
+	async show<K extends keyof DBQueryType = keyof DBQueryType>({
+		id,
+		dbName,
+		options,
+	}: {
+		id: number;
+		dbName: keyof typeof db.query;
+		options?: FindFirstType<K>;
+	}) {
+		let model = db.query[dbName as any];
 
 		let item;
 
@@ -181,7 +184,7 @@ export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> 
 		return item;
 	}
 
-	async update({ id, req, schema }: CreateProps & { id: number }) {
+	async update({ id, req, schema }: CreateProps & { id: number; schema: PgTable<TableConfig> }) {
 		const { query, user, body, file, files } = req || {};
 
 		let item = undefined;
@@ -232,9 +235,9 @@ export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> 
 
 		item = (
 			await db
-				.update(schema || this.dbSchema)
+				.update(schema)
 				.set(payload)
-				.where(eq((this.dbSchema as any).id, id))
+				.where(eq((schema as any).id, id))
 				.returning()
 		)?.[0];
 
@@ -248,7 +251,7 @@ export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> 
 		return item;
 	}
 
-	async delete(id: number, user?: User) {
+	async delete({ id, schema, user }: { id: number; user?: User; schema: PgTable<TableConfig> }) {
 		let fullName = getFullName(user);
 
 		let payload = {
@@ -259,9 +262,9 @@ export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> 
 
 		const item = (
 			await db
-				.update(this.dbSchema)
+				.update(schema)
 				.set(payload)
-				.where(eq((this.dbSchema as any).id, id))
+				.where(eq((schema as any).id, id))
 				.returning()
 		)?.[0];
 
@@ -273,11 +276,11 @@ export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> 
 		return item;
 	}
 
-	async forceDelete(id: number) {
+	async forceDelete({ id, schema }: { id: number; schema: PgTable<TableConfig> }) {
 		const item = (
 			await db
-				.delete(this.dbSchema)
-				.where(eq((this.dbSchema as any).id, id))
+				.delete(schema)
+				.where(eq((schema as any).id, id))
 				.returning()
 		)?.[0];
 

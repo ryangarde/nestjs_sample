@@ -22,9 +22,9 @@ export class BaseController {
 	@Get()
 	async index(@Request() req?): Promise<any> {
 		try {
-			const baseService = new BaseService(this.dbName);
+			const baseService = new BaseService();
 
-			const items = await baseService.index({ query: req.query });
+			const items = await baseService.index({ query: req.query, dbName: this.dbName });
 			return apiResponse({ data: items });
 		} catch (err) {
 			console.error(err);
@@ -36,9 +36,9 @@ export class BaseController {
 	@Post()
 	async create(@Request() req): Promise<any> {
 		try {
-			const baseService = new BaseService(this.schema);
+			const baseService = new BaseService();
 
-			const item = await baseService.create({ req });
+			const item = await baseService.create({ req, schema: this.schema });
 			return apiResponse({ data: item, message: 'Successfully created', status: 201 });
 		} catch (err) {
 			console.log(err);
@@ -49,9 +49,9 @@ export class BaseController {
 	@Get(':id')
 	async show<K extends keyof DBQueryType = keyof DBQueryType>(@Param('id') id, options?: FindFirstType<K>): Promise<any> {
 		try {
-			const baseService = new BaseService(this.dbName);
+			const baseService = new BaseService();
 
-			const item = await baseService.show(id, options);
+			const item = await baseService.show({ id, dbName: this.dbName, options });
 
 			return apiResponse({ data: item });
 		} catch (err) {
@@ -63,8 +63,8 @@ export class BaseController {
 	@Patch(':id')
 	async update(@Param('id') id, @Request() req): Promise<any> {
 		try {
-			const baseService = new BaseService(this.schema);
-			const item = await baseService.update({ id, req });
+			const baseService = new BaseService();
+			const item = await baseService.update({ id, req, schema: this.schema });
 
 			return apiResponse({ data: item, message: 'Successfully updated' });
 		} catch (err) {
@@ -76,8 +76,8 @@ export class BaseController {
 	@Delete(':id')
 	async delete(@Param('id') id, @CurrentUser() user): Promise<any> {
 		try {
-			const baseService = new BaseService(this.dbName);
-			const item = await baseService.delete(id, user);
+			const baseService = new BaseService();
+			const item = await baseService.delete({ id, user, schema: this.schema });
 
 			return apiResponse({ data: item, message: 'Successfully deleted' });
 		} catch (err) {
@@ -93,8 +93,8 @@ export class BaseController {
 	@Delete(':id/force')
 	async forceDelete(@Param('id') id): Promise<any> {
 		try {
-			const baseService = new BaseService(this.dbName);
-			const item = await baseService.forceDelete(id);
+			const baseService = new BaseService();
+			const item = await baseService.forceDelete({ id, schema: this.schema });
 
 			return apiResponse({ data: item, message: 'Successfully deleted' });
 		} catch (err) {
