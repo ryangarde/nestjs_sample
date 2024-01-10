@@ -25,6 +25,22 @@ Proceed to step 4 if you want to populate the db with data
 
 When you made a mistake by generating a wrong migration file, DO NOT delete the migration file inside drizzle. Instead, run `npm run migrate:drop` then in the terminal it will let you choose the migration file to drop.
 
+# NestJS Documentation
+
+[NestJS Documentation](https://docs.nestjs.com/)
+
+## Module
+
+To create a new module run:<br/>
+`nest g module app/<module-name>`
+
+## Controller
+
+To create a new controller run:<br/>
+`nest g controller app/<module>/<controller-name>`
+
+If you specify a module, the controller will be added to that module. If you don't specify a module, the controller will be added to the `app` module.
+
 # Build and Test
 
 TODO: Describe and show how to build your code and run the tests.

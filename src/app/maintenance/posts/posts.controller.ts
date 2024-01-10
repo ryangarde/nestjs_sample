@@ -25,10 +25,10 @@ export class PostsController extends BaseController {
 		// const baseService = new BaseService();
 		// const posts = await baseService.index({ query, items: 'posts' });
 
-		// const postService = new BaseService();
-		// const posts = await postService.index({ dbName: 'posts', query });
+		const postService = new BaseService();
+		const posts = await postService.index({ dbName: 'posts', query });
 
-		const posts = await this.baseService.index({ query, dbName: 'posts' });
+		// const posts = await this.baseService.index({ query, dbName: 'posts' });
 		return apiResponse({ data: posts });
 	}
 

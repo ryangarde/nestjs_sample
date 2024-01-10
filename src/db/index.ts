@@ -10,4 +10,4 @@ export const connection = postgres({
 	database: process.env.DB_NAME,
 });
 
-export const db = drizzle(connection, { schema });
+export const db = drizzle(connection, { schema, logger: true });

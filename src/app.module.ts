@@ -9,6 +9,7 @@ import { AuthModule } from './app/auth/auth.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { BaseService } from './app/base/base.service';
 import { diskStorage } from 'multer';
+import { TaskModule } from './app/task/task.module';
 import * as fs from 'fs';
 
 @Module({
@@ -39,6 +40,7 @@ import * as fs from 'fs';
 			},
 		]),
 		AuthModule,
+		TaskModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

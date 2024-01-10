@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { User } from '@/db/schema';
+import { User, posts } from '@/db/schema';
 import { getFileUrl, getFullName, pascalToTitleCase, slugifyWithDateTime } from '@/utils/common/string';
 import { apiResponse } from '@/utils/helpers/api-response';
 import { Injectable } from '@nestjs/common';
