@@ -20,11 +20,11 @@ export class BaseController {
 	) {}
 
 	@Get()
-	async index(@Query() query?, @CurrentUser() user?): Promise<any> {
+	async index(@Request() req?): Promise<any> {
 		try {
 			const baseService = new BaseService(this.dbName);
 
-			const items = await baseService.index({ query });
+			const items = await baseService.index({ query: req.query });
 			return apiResponse({ data: items });
 		} catch (err) {
 			console.error(err);

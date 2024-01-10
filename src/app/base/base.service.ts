@@ -9,7 +9,7 @@ import { Request } from 'express';
 
 type IndexProps = {
 	query?: any;
-	items?: keyof typeof db.query;
+	dbName?: keyof typeof db.query;
 };
 
 type CreateProps = {
@@ -27,9 +27,23 @@ type DBType = typeof db;
 type DBQueryType = DBType['query'];
 type FindFirstType<K extends keyof DBQueryType = keyof DBQueryType> = Parameters<DBType['query'][K]['findFirst']>[0];
 
+type PaginationProps = {
+	page_data_count?: number;
+	page_limit: number;
+	page_number_current: number;
+	page_total?: number;
+	total_data: number;
+	total_pages: number;
+};
+
+export type PaginatedData<I = any> = {
+	data: I[];
+	pagination?: PaginationProps;
+};
+
 @Injectable()
-export class BaseService<T extends PgTable<TableConfig>> {
-	model: keyof typeof db.query = null;
+export class BaseService<T extends PgTable<TableConfig> = PgTable<TableConfig>> {
+	dbName: keyof typeof db.query = null;
 	dbSchema: T = null;
 
 	constructor(
@@ -37,14 +51,14 @@ export class BaseService<T extends PgTable<TableConfig>> {
 		//  dbList?: PgTable<TableConfig>
 	) {
 		if (typeof model === 'string') {
-			this.model = model;
+			this.dbName = model;
 		} else {
 			this.dbSchema = model;
 		}
 	}
 
-	async index({ query, items }: IndexProps) {
-		let model = db.query[items || (this.model as any)];
+	async index<I = any>({ query, dbName }: IndexProps): Promise<I[] | PaginatedData<I>> {
+		let model = db.query[dbName || (this.dbName as any)];
 		// db.query.posts.findMany({
 		// 	where: (items, { isNotNull }) => isNotNull(items.deleted_datetime),
 		// })
@@ -55,7 +69,7 @@ export class BaseService<T extends PgTable<TableConfig>> {
 		const include = query.include ? `[${query.include.join(',')}]` : null;
 
 		if (page) {
-			const count = +(await db.execute(sql.raw(`SELECT COUNT(*) as count FROM ${this.model}`)))[0].count;
+			const count = +(await db.execute(sql.raw(`SELECT COUNT(*) as count FROM ${this.dbName}`)))[0].count;
 			const pagination = {
 				total_data: count,
 				page_limit: limit || 10,
@@ -63,7 +77,7 @@ export class BaseService<T extends PgTable<TableConfig>> {
 				total_pages: Math.ceil(count / (limit || 10)),
 			};
 
-			const data = await model.findMany({
+			const data: any[] = await model.findMany({
 				offset: (page - 1) * page,
 				limit: (page - 1) * page + (limit || 10),
 				where: (items, { isNull }) => isNull(items.deleted_datetime),
@@ -145,7 +159,7 @@ export class BaseService<T extends PgTable<TableConfig>> {
 	}
 
 	async show<K extends keyof DBQueryType = keyof DBQueryType>(id: number, options?: FindFirstType<K>) {
-		let model = db.query[this.model as any];
+		let model = db.query[this.dbName as any];
 
 		let item;
 

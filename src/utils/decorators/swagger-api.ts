@@ -1,14 +1,15 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiProperty, ApiResponse, ApiParam, ApiParamOptions } from '@nestjs/swagger';
 import { TableConfig } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 
 type SwaggerApiProps = {
 	schema: PgTable<TableConfig>;
-	action?: 'create' | 'update';
+	action?: 'create' | 'update' | 'list';
+	params?: ApiParamOptions;
 };
 
-export const SwaggerApi = ({ schema, action }: SwaggerApiProps) => {
+export const SwaggerApi = ({ schema, action, params }: SwaggerApiProps) => {
 	const properties = {};
 	const actionProperties = {};
 	const required = [];
@@ -38,6 +39,7 @@ export const SwaggerApi = ({ schema, action }: SwaggerApiProps) => {
 						return schema[key].dataType;
 					}
 				})(),
+				example: schema[key].name === 'id' ? 1 : undefined,
 			};
 		}
 
@@ -47,50 +49,46 @@ export const SwaggerApi = ({ schema, action }: SwaggerApiProps) => {
 			}
 
 			properties[schema[key].name] = {
-				type: (() => {
+				type: () => {
 					if (schema[key].dataType === 'date') {
 						return 'string';
 					} else {
 						return schema[key].dataType;
 					}
-				})(),
+				},
+				example: schema[key].name === 'id' ? 1 : undefined,
 			};
 		}
 	});
 
-	function customDecorator() {
-		return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-			const originalValue = descriptor.value;
-
-			descriptor.value = function (...args: any[]) {
-				// "this" here will refer to the class instance
-				console.log(this.constructor.name, 'asdad');
-
-				return originalValue.apply(this, args);
-			};
-		};
-	}
-
-	return applyDecorators(
-		customDecorator,
-		ApiBody({
-			schema: {
-				type: 'object',
-				properties: actionProperties,
-			},
-		}),
+	const decorators = [
+		['create', 'update'].includes(action) &&
+			ApiBody({
+				schema: {
+					type: 'object',
+					properties: actionProperties,
+				},
+			}),
 		ApiResponse({
 			schema: {
 				type: 'object',
 				required,
 				properties: {
-					response: {
-						type: 'object',
-						properties,
-					},
+					response:
+						action === 'list'
+							? {
+									type: 'array',
+									items: {
+										type: 'object',
+										properties,
+									},
+								}
+							: {
+									type: 'object',
+									properties,
+								},
 					message: {
 						type: 'string',
-						example: 'Successfully created',
 					},
 					result_status: {
 						type: 'string',
@@ -103,6 +101,9 @@ export const SwaggerApi = ({ schema, action }: SwaggerApiProps) => {
 				},
 			},
 			status: action === 'create' ? 201 : 200,
-		})
-	);
+		}),
+		!!params && ApiParam(params),
+	].filter((v) => !!v);
+
+	return applyDecorators(...decorators);
 };

@@ -6,27 +6,28 @@ import { BaseController } from '@/app/base/base.controller';
 import { apiResponse } from '@/utils/helpers/api-response';
 import { UploadInterceptor } from '@/utils/decorators/upload-interceptor.decorator';
 import { UseAuthGuard } from '@/utils/decorators/use-auth-guard.decorator';
-import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
-import { CreatePostDTO } from './create-post.dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SwaggerApi } from '@/utils/decorators/swagger-api';
-import CurrentUser from '@/utils/decorators/user.decorator';
+import { db } from '@/db';
 
 @UseAuthGuard()
 @Controller('posts')
 @ApiBearerAuth()
 @ApiTags('Post')
 export class PostsController extends BaseController {
-	constructor() {
+	constructor(private postService: BaseService) {
 		super('posts', posts);
 	}
 
+	@SwaggerApi({ schema: posts, action: 'list' })
 	@Get()
 	async index(@Query() query) {
 		// const baseService = new BaseService();
 		// const posts = await baseService.index({ query, items: 'posts' });
-		const postService = new BaseService('posts');
+		// const postService = new BaseService('posts');
 
-		const posts = await postService.index({ query });
+		// const posts = await postService.index({ query });
+		const posts = await this.postService.index({ dbName: 'posts', query });
 		return apiResponse({ data: posts });
 	}
 
@@ -38,6 +39,7 @@ export class PostsController extends BaseController {
 		return super.create(req);
 	}
 
+	@SwaggerApi({ schema: posts, params: { name: 'id', required: true } })
 	@Get(':id')
 	async show(@Param('id') id) {
 		return super.show<'posts'>(id, {
