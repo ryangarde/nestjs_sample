@@ -15,7 +15,7 @@ import { db } from '@/db';
 @ApiBearerAuth()
 @ApiTags('Post')
 export class PostsController extends BaseController {
-	constructor(private postService: BaseService) {
+	constructor() {
 		super('posts', posts);
 	}
 
@@ -24,10 +24,10 @@ export class PostsController extends BaseController {
 	async index(@Query() query) {
 		// const baseService = new BaseService();
 		// const posts = await baseService.index({ query, items: 'posts' });
-		// const postService = new BaseService('posts');
 
-		// const posts = await postService.index({ query });
-		const posts = await this.postService.index({ dbName: 'posts', query });
+		const postService = new BaseService('posts');
+		const posts = await postService.index({ query });
+		// const posts = await this.postService.index({ dbName: 'posts', query });
 		return apiResponse({ data: posts });
 	}
 
