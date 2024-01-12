@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
 	const app = await NestFactory.create<NestFastifyApplication>(AppModule);
@@ -12,6 +13,7 @@ async function bootstrap() {
 	SwaggerModule.setup('api', app, document);
 
 	app.setGlobalPrefix('api');
+	app.useGlobalPipes(new ValidationPipe());
 	await app.listen(process.env.PORT);
 }
 bootstrap();

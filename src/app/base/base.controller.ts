@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param, Patch, Post, Query, Request } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request } from '@nestjs/common';
 import { PgTable, TableConfig } from 'drizzle-orm/pg-core';
 
 import { db } from '@/db';
@@ -14,17 +14,20 @@ type FindFirstType<K extends keyof DBQueryType = keyof DBQueryType> = Parameters
 
 @Controller()
 export class BaseController {
-	constructor(
-		private dbName?: keyof typeof db.query,
-		private schema?: PgTable<TableConfig>
-	) {}
+	private dbName: keyof typeof db.query;
+	private schema: PgTable<TableConfig>;
+
+	constructor(options: { dbName?: keyof typeof db.query; schema?: PgTable<TableConfig> }) {
+		this.dbName = options.dbName;
+		this.schema = options.schema;
+	}
 
 	@Get()
-	async index(@Request() req?): Promise<any> {
+	async index(@Request() req?, ...args: any[]): Promise<any> {
 		try {
 			const baseService = new BaseService();
 
-			const items = await baseService.index({ query: req.query, dbName: this.dbName });
+			const items = await baseService.index({ req, dbName: this.dbName, schema: this.schema });
 			return apiResponse({ data: items });
 		} catch (err) {
 			console.error(err);
@@ -34,7 +37,7 @@ export class BaseController {
 
 	// @SwaggerApi({ schema: (this as any).schema, action: 'create' })
 	@Post()
-	async create(@Request() req): Promise<any> {
+	async create(@Request() req, ...args: any[]): Promise<any> {
 		try {
 			const baseService = new BaseService();
 
@@ -47,11 +50,11 @@ export class BaseController {
 	}
 
 	@Get(':id')
-	async show<K extends keyof DBQueryType = keyof DBQueryType>(@Param('id') id, options?: FindFirstType<K>): Promise<any> {
+	async show<K extends keyof DBQueryType = keyof DBQueryType>(@Request() req, query?: FindFirstType<K>, ...args: any[]): Promise<any> {
 		try {
 			const baseService = new BaseService();
 
-			const item = await baseService.show({ id, dbName: this.dbName, options });
+			const item = await baseService.show({ req, dbName: this.dbName, query });
 
 			return apiResponse({ data: item });
 		} catch (err) {
@@ -61,10 +64,10 @@ export class BaseController {
 	}
 
 	@Patch(':id')
-	async update(@Param('id') id, @Request() req): Promise<any> {
+	async update(@Request() req, ...args: any[]): Promise<any> {
 		try {
 			const baseService = new BaseService();
-			const item = await baseService.update({ id, req, schema: this.schema });
+			const item = await baseService.update({ req, schema: this.schema });
 
 			return apiResponse({ data: item, message: 'Successfully updated' });
 		} catch (err) {
@@ -74,10 +77,10 @@ export class BaseController {
 	}
 
 	@Delete(':id')
-	async delete(@Param('id') id, @CurrentUser() user): Promise<any> {
+	async delete(@Request() req, ...args: any[]): Promise<any> {
 		try {
 			const baseService = new BaseService();
-			const item = await baseService.delete({ id, user, schema: this.schema });
+			const item = await baseService.delete({ req, schema: this.schema });
 
 			return apiResponse({ data: item, message: 'Successfully deleted' });
 		} catch (err) {
@@ -91,7 +94,7 @@ export class BaseController {
 	}
 
 	@Delete(':id/force')
-	async forceDelete(@Param('id') id): Promise<any> {
+	async forceDelete(@Param('id') id, ...args: any[]): Promise<any> {
 		try {
 			const baseService = new BaseService();
 			const item = await baseService.forceDelete({ id, schema: this.schema });

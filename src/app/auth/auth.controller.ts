@@ -1,10 +1,9 @@
-import { Body, Controller, Post, UseGuards, Request, Get } from '@nestjs/common';
+import { Body, Controller, Post, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
 import CurrentUser from '@/utils/decorators/user.decorator';
-import { AuthGuard } from '@nestjs/passport';
 import { db } from '@/db';
 import { apiResponse } from '@/utils/helpers/api-response';
+import { UseAuthGuard } from '@/utils/decorators/use-auth-guard.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -31,17 +30,17 @@ export class AuthController {
 		}
 	}
 
-	@UseGuards(AuthGuard('jwt'))
+	@UseAuthGuard()
 	@Get('profile')
 	async getProfile(@CurrentUser() user) {
 		try {
-			const data = await db.query.users.findMany({
-				with: {
-					role: true,
-				},
-			});
+			// const data = await db.query.users.findMany({
+			// 	with: {
+			// 		role: true,
+			// 	},
+			// });
 
-			return apiResponse({ data });
+			return apiResponse({ data: user });
 		} catch (err) {
 			return apiResponse({ error: err });
 		}

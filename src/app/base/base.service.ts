@@ -3,13 +3,21 @@ import { User, posts } from '@/db/schema';
 import { getFileUrl, getFullName, pascalToTitleCase, slugifyWithDateTime } from '@/utils/common/string';
 import { apiResponse } from '@/utils/helpers/api-response';
 import { Injectable } from '@nestjs/common';
-import { TableConfig, sql, eq } from 'drizzle-orm';
+import { TableConfig, sql, eq, and, like, or, isNull } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { Request } from 'express';
 
-type IndexProps = {
-	query?: any;
-	dbName: keyof typeof db.query;
+type DBType = typeof db;
+type DBQueryType = DBType['query'];
+type FindFirstType<K extends keyof DBQueryType = keyof DBQueryType> = Parameters<DBType['query'][K]['findFirst']>[0];
+type FindManyType<K extends keyof DBQueryType = keyof DBQueryType> = Parameters<DBType['query'][K]['findMany']>[0];
+
+type IndexProps<K extends keyof DBQueryType = keyof DBQueryType> = {
+	req: Request;
+	// dbName: keyof typeof db.query;
+	dbName: keyof DBQueryType;
+	schema: PgTable<TableConfig>;
+	query?: FindManyType<K>;
 };
 
 type CreateProps = {
@@ -23,10 +31,6 @@ type CreateProps = {
 	schema: PgTable<TableConfig>;
 };
 
-type DBType = typeof db;
-type DBQueryType = DBType['query'];
-type FindFirstType<K extends keyof DBQueryType = keyof DBQueryType> = Parameters<DBType['query'][K]['findFirst']>[0];
-
 type PaginationProps = {
 	page_data_count?: number;
 	page_limit: number;
@@ -37,6 +41,7 @@ type PaginationProps = {
 };
 
 export type PaginatedData<I = any> = {
+	// data: I[];
 	data: I[];
 	pagination?: PaginationProps;
 };
@@ -57,39 +62,81 @@ export class BaseService {
 	// 	}
 	// }
 
-	async index<I = any>({ query, dbName }: IndexProps): Promise<I[] | PaginatedData<I>> {
+	async index<I = any, K extends keyof DBQueryType = keyof DBQueryType>({
+		req,
+		dbName,
+		query,
+		schema,
+	}: IndexProps<K>): Promise<I[] | PaginatedData<I>> {
 		let model = db.query[dbName as any];
-		// db.query.posts.findMany({
-		// 	where: (items, { isNotNull }) => isNotNull(items.deleted_datetime),
-		// })
 
-		const page = +query.page;
-		const limit = query.limit;
-		const search = query.search ? JSON.parse(query.search) : null;
-		const include = query.include ? `[${query.include.join(',')}]` : null;
+		const where = query?.where;
+
+		const page = +req.query.page;
+		const limit = +req.query.limit;
+		const search = req.query.search ? req.query.search : null;
+		const active = req.query.active === 'true' ? true : false;
+		// const include = req.query.include ? `[${req.query.include.join(',')}]` : null;
+
+		const searchColumns = [];
+
+		Object.keys(schema).forEach((key) => {
+			if (
+				![
+					'$inferInsert',
+					'$inferSelect',
+					'_',
+					'getSQL',
+					'id',
+					// 'deleted_datetime',
+					// 'created_datetime',
+					// 'updated_datetime',
+					'is_active',
+				].includes(key) &&
+				!key.includes('datetime')
+			) {
+				searchColumns.push(like(schema[key], '%' + search + '%'));
+			}
+		});
 
 		if (page) {
-			const count = +(await db.execute(sql.raw(`SELECT COUNT(*) as count FROM ${dbName}`)))[0].count;
-			const pagination = {
-				total_data: count,
-				page_limit: limit || 10,
-				page_number_current: page,
-				total_pages: Math.ceil(count / (limit || 10)),
-			};
-
-			const data: any[] = await model.findMany({
-				offset: (page - 1) * page,
-				limit: (page - 1) * page + (limit || 10),
-				where: (items, { isNull }) => isNull(items.deleted_datetime),
+			const data = await model.findMany({
+				offset: (page - 1) * (limit || 10),
+				limit: limit || 10,
+				extras: {
+					total_count: sql`COUNT(*) OVER()`.as('total_count'),
+				},
+				...query,
+				where: (items, queryOptions) =>
+					and(
+						!!search ? or(...searchColumns) : undefined,
+						(schema as any).deleted_datetime ? isNull((schema as any).deleted_datetime) : undefined,
+						(schema as any).is_active && active ? eq((schema as any).is_active, true) : undefined,
+						where instanceof Function ? where(items, queryOptions) : where
+					),
+				// where: (items, { isNull }) => isNull(items.deleted_datetime),
 			});
 
 			return {
 				data,
-				pagination,
+				pagination: {
+					total_data: data.length > 0 ? +data[0].total_count : 0,
+					page_limit: limit || 10,
+					page_number_current: page,
+					total_pages: Math.ceil(data.length > 0 ? +data[0].total_count / (limit || 10) : 0),
+				},
 			};
 		} else {
 			const items = await model.findMany({
-				where: (items, { isNull }) => isNull(items.deleted_datetime),
+				...query,
+				where: (items, queryOptions) =>
+					and(
+						!!search ? or(...searchColumns) : undefined,
+						(schema as any).deleted_datetime ? isNull((schema as any).deleted_datetime) : undefined,
+						(schema as any).is_active && active ? eq((schema as any).is_active, true) : undefined,
+						where instanceof Function ? where(items, queryOptions) : where
+					),
+				// where: (items, { isNull }) => isNull(items.deleted_datetime),
 			});
 			return items;
 		}
@@ -154,26 +201,27 @@ export class BaseService {
 	}
 
 	async show<K extends keyof DBQueryType = keyof DBQueryType>({
-		id,
+		req,
 		dbName,
-		options,
+		query,
 	}: {
-		id: number;
+		req: Request;
 		dbName: keyof typeof db.query;
-		options?: FindFirstType<K>;
+		query?: FindFirstType<K>;
 	}) {
 		let model = db.query[dbName as any];
+		const id = req.params.id;
 
 		let item;
 
 		// if (include) {
 		// 	model = model.withGraphFetched(include);
 		// }
-		const { where, ...optionsProp } = options || {};
+		const { where, ...options } = query || {};
 
 		item = await model.findFirst({
-			where: (items, { eq, and, ...props }) => and(eq(items.id, id), (where as any)?.(items, { eq, and, ...props })),
-			...optionsProp,
+			where: (items, queryOptions) => and(eq(items.id, id), where instanceof Function ? where(items, queryOptions) : where),
+			...options,
 		});
 
 		if (!item) {
@@ -184,8 +232,9 @@ export class BaseService {
 		return item;
 	}
 
-	async update({ id, req, schema }: CreateProps & { id: number; schema: PgTable<TableConfig> }) {
+	async update({ req, schema }: CreateProps & { schema: PgTable<TableConfig> }) {
 		const { query, user, body, file, files } = req || {};
+		const id = req.params.id;
 
 		let item = undefined;
 		const slugColumn = query?.slug as { column: string; target: string };
@@ -251,8 +300,9 @@ export class BaseService {
 		return item;
 	}
 
-	async delete({ id, schema, user }: { id: number; user?: User; schema: PgTable<TableConfig> }) {
-		let fullName = getFullName(user);
+	async delete({ schema, req }: { req: Request; schema: PgTable<TableConfig> }) {
+		let fullName = getFullName(req.user as User);
+		const id = req.params.id;
 
 		let payload = {
 			is_active: false,

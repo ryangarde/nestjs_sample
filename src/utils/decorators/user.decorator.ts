@@ -7,7 +7,7 @@ export interface CurrentUserOptions {
 
 export const CurrentUser = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
 	const request = ctx.switchToHttp().getRequest();
-	console.log(ctx.getClass());
-	return request.user as User;
+	const user: User = request.user;
+	return user;
 });
 export default CurrentUser;

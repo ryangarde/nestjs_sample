@@ -1,5 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiBody, ApiProperty, ApiResponse, ApiParam, ApiParamOptions } from '@nestjs/swagger';
+import { ApiBody, ApiProperty, ApiResponse, ApiParam, ApiParamOptions, ApiBodyOptions } from '@nestjs/swagger';
 import { TableConfig } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 
@@ -7,9 +7,10 @@ type SwaggerApiProps = {
 	schema: PgTable<TableConfig>;
 	action?: 'create' | 'update' | 'list';
 	params?: ApiParamOptions;
+	body?: ApiBodyOptions;
 };
 
-export const SwaggerApi = ({ schema, action, params }: SwaggerApiProps) => {
+export const SwaggerApi = ({ schema, action, params, body }: SwaggerApiProps) => {
 	const properties = {};
 	const actionProperties = {};
 	const required = [];
@@ -64,6 +65,7 @@ export const SwaggerApi = ({ schema, action, params }: SwaggerApiProps) => {
 	const decorators = [
 		['create', 'update'].includes(action) &&
 			ApiBody({
+				...body,
 				schema: {
 					type: 'object',
 					properties: actionProperties,

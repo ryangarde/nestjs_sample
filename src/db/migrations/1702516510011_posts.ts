@@ -18,3 +18,5 @@ export const posts = pgTable('posts', {
 export const postRelations = relations(posts, ({ many }) => ({
 	comments: many(comments),
 }));
+
+export type Post = typeof posts.$inferSelect;
